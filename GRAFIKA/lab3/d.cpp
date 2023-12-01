@@ -62,6 +62,11 @@ int						g_nVertices;
 int						g_nTriangles;
 
 
+static float m = 20.0f;
+static float k = 20.0f;
+static float n = 20.0f;
+
+
 //--------------------------------------------------------------------------------------
 // Forward declarations
 //--------------------------------------------------------------------------------------
@@ -799,7 +804,39 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         x = LOWORD(lParam);
         y = HIWORD(lParam);
+        
         break;
+    }
+    case WM_KEYDOWN:
+    {
+        if (wParam == 'D') {
+            k += 1;
+        }
+        else if(wParam == 'A') {
+            k -= 1;
+        }
+        else if(wParam == 'W')
+        {
+            m += 1;
+        }
+        else if (wParam == 'S')
+        {
+            m -= 1;
+        }
+
+        else if (wParam == 'Q')
+        {
+            n += 1;
+        }
+        else if (wParam == 'E')
+        {
+            if (n > 0) {
+                n -= 1;
+            }
+            
+        }
+        break;
+
     }
 
     case WM_DESTROY:
@@ -826,13 +863,12 @@ void Render()
     g_World = XMMatrixIdentity();
 
     // Initialize the view matrix
-    XMVECTOR Eye = XMVectorSet(20.0f, 20.0f, 20.0f, 0.0f);
+    XMVECTOR Eye = XMVectorSet(k,m, 1+n, 0.0f);
     XMVECTOR At = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     g_View = XMMatrixLookAtRH(Eye, At, Up);
-
-    // Update our time
     static float t = 0.0f;
+    
     if (g_driverType == D3D_DRIVER_TYPE_REFERENCE)
     {
         t += (float)XM_PI * 0.0125f;
@@ -845,16 +881,22 @@ void Render()
             timeStart = timeCur;
         t = (timeCur - timeStart) / 1000.0f;
     }
-
-
     // Rotate around the origin
     g_World = XMMatrixRotationY(t);
 
+    
+    //if (isOY) {
+    //    g_World = XMMatrixRotationY(t);
+    //}
+    //else {
+    //    g_World = XMMatrixRotationX(m);
+    //}
+    
 
     // Setup our lighting parameters
     XMFLOAT4 vLightDirs = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
     XMFLOAT4 vLightColors = XMFLOAT4(0.5f, 0.0f, 0.0f, 1.0f);
-
+    XMFLOAT4 vLightColorsGreen = XMFLOAT4(0.0f, 0.5f, 0.0f, 1.0f);
     //
     // Clear the back buffer
     //
@@ -876,6 +918,16 @@ void Render()
     cb1.vLightDir = vLightDirs;
     cb1.vLightColor = vLightColors;
     cb1.vOutputColor = XMFLOAT4(0, 0, 0, 0);
+
+    XMMATRIX translationMatrix = XMMatrixTranslation(14.0f, 14.0f,0.0f);
+    g_World = XMMatrixMultiply(g_World, translationMatrix);
+    ConstantBuffer cb2;
+    cb2.mWorld = XMMatrixTranspose(g_World);
+    cb2.mView = XMMatrixTranspose(g_View);
+    cb2.mProjection = XMMatrixTranspose(g_Projection);
+    cb2.vLightDir = vLightDirs;
+    cb2.vLightColor = vLightColorsGreen;
+    cb2.vOutputColor = XMFLOAT4(0, 0, 0, 0);
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb1, 0, 0);
 
     //
@@ -886,6 +938,9 @@ void Render()
     g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
     g_pImmediateContext->DrawIndexed(g_nTriangles * 3, 0, 0);
 
+
+    g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb2, 0, 0);
+    g_pImmediateContext->DrawIndexed(g_nTriangles * 3, 0, 0);
 
     //
     // Present our back buffer to our front buffer
